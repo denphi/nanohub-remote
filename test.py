@@ -7,9 +7,9 @@ params = a.getToolParameters('pntoy')
 #for k,p in params.items():
 #  print(p)
 print(params['p_len'])
-params['p_len'].current = "33um"
-job_id = a.submitTool(params)
-#print()
-(a.checkStatus(job_id))
-(a.getResults(job_id))
+params['p_len'].current = "6um"
+job_id = a.submitTool(params, wait_results=True, wait_time=2.0, wait_limit=60)
+print(job_id)
+job_id = {'job_id':'1558396', 'results':None}
+
 

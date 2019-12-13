@@ -24,13 +24,13 @@
 #  Daniel Mejia (denphi), Purdue University (denphi@denphi.com)
 
 
-import sys, json, time
 import requests
-import json, os       
-import time 
+import json
 import xml.etree.ElementTree as ET
 import copy
-from .params import ParamsFactory
+from time import sleep, time
+from .params import ParamsFactory, Params
+from .output import OutputFactory
 
 class Session():
   credentials = {}
@@ -72,7 +72,7 @@ class Session():
     self.authenticated = True  
     
   def validateSession(self):
-    timestamp = int(time.time())
+    timestamp = int(time())
     if self.authenticated == True:
       if self.expires_in > timestamp : 
         if (self.refresh_token != ""):
@@ -239,11 +239,14 @@ class Tools(Session):
     info_request = request.json()
     return info_request
   
-  def getResults(self, session_id):
+  def getResults(self, session_id, **kwargs):
     self.validateSession() 
     if (self.authenticated == False):
       raise ConnectionError('not connected')
-    status = self.checkStatus(session_id)
+    verbose = kwargs.get("verbose", False)
+    status = self.checkStatus(session_id, verbose=verbose);
+    if verbose:
+      print(status);
     if 'success' in status and status['success']:
       if 'status' in status:
         if 'finished' in status:
@@ -252,12 +255,21 @@ class Tools(Session):
               'session_num': session_id,
               'run_file': status['run_file']
             }
-            return self.loadResults(results_json)
+            xml = ET.fromstring(self.loadResults(results_json))
+            outputs = xml.find('output')
+            outputs = [OutputFactory.builder(o) for o in outputs]
+            outputs = [o for o in outputs if o != None]
+            return outputs
+        else:
+          return []
+             
     raise AttributeError('results are not available')
 
 
-  def loadResults(self, results_json):
+  def loadResults(self, results_json, **kwargs):
     self.validateSession() 
+    if (self.authenticated == False):
+      raise ConnectionError('not connected')
     request = requests.post(self.getUrl('tools/output'), data=results_json, headers=self.headers)
     result_json = request.json()
     if 'output' in result_json:
@@ -265,14 +277,17 @@ class Tools(Session):
     else:
         return '';
                         
-  def checkStatus(self, session_id):
+  def checkStatus(self, session_id, **kwargs):
     self.validateSession() 
     if (self.authenticated == False):
-      raise ConnectionError('not connected')
+      raise ConnectionError('not connected')      
     status_json = requests.post(self.getUrl('tools/status'), data={'session_num': str(session_id)}, headers=self.headers)
+    verbose = kwargs.get("verbose", False)
+    if verbose:
+      print(status_json);
     return status_json.json()
 
-  def getSession(self, driver_json):
+  def getSession(self, driver_json, **kwargs):
     self.validateSession() 
     if (self.authenticated == False):
       raise ConnectionError('not connected')
@@ -284,7 +299,7 @@ class Tools(Session):
       msg = 'launch_tool failed ({0}): {1}\n'.format(run_json['code'], run_json['message'])
       raise ConnectionError(msg)
 
-  def getRapptureSchema(self, toolname, force=True):
+  def getRapptureSchema(self, toolname, force=True, **kwargs):
     self.validateSession()
     if (self.authenticated == False):
       raise ConnectionError('not connected')
@@ -297,7 +312,7 @@ class Tools(Session):
       self.cached_toolname = toolname
     return rappturexml;
 
-  def getToolInputs(self, toolname):
+  def getToolInputs(self, toolname, **kwargs):
     xml = ET.fromstring(self.getRapptureSchema(toolname))
     inputs = xml.find('input')
     params = {}
@@ -376,14 +391,40 @@ class Tools(Session):
       params[k] = ParamsFactory.builder(v);
     return params
 
-  def submitTool(self, parameters, toolname=None):
+  def submitTool(self, parameters, **kwargs):
+    if not isinstance(parameters, dict):
+      raise ValueError("parameters object is no valid")
+    
+    for k,p in parameters.items():
+      if not isinstance(p, Params):
+        raise ValueError(str(k) + " is no a valid Parameter object, " + str(p))
+
+    toolname = kwargs.get("toolname", None)
+    wait_results = kwargs.get("wait_results", False)
+    wait_time = float(kwargs.get("wait_time", 2.0))
+    wait_limit = int(time()) + kwargs.get("wait_limit", 300)
+    verbose = kwargs.get("verbose", False)
+    results = None
     if toolname is None:
       toolname = self.cached_toolname
     xml = ET.fromstring(self.getRapptureSchema(toolname))
     driver_str = self.generateDriver(xml, parameters)
     driver_json = {'app': toolname, 'xml': driver_str}
-    session_id = self.getSession(driver_json)
-    return session_id;
+    job_id = self.getSession(driver_json)
+    if (wait_results):
+      while (results is None):
+        if(verbose):
+          print (time(), "-" ,wait_limit)
+        if (time() > wait_limit):
+          raise TimeoutError("limit of " + str(wait_limit) + "sec have been reached, use methods checkStatus("+job_id+") / getResults("+job_id+")" )
+        sleep(wait_time)
+        try:
+          results = self.getResults(job_id, verbose=verbose)
+        except AttributeError as e :
+          pass;
+        except Exception as e:
+          raise e;
+    return {'job_id':job_id, 'results':results};
 
 
   def generateDriver(self, schema, parameters):
@@ -425,21 +466,3 @@ class Tools(Session):
     driver_str  = '<?xml version="1.0"?>\n' + ET.tostring(xml).decode()
     return driver_str;   
  
-#class setInterval :
-#    def __init__(self,interval,action) :
-#        self.interval=interval
-#        self.action=action
-#        self.stopEvent=threading.Event()
-#        thread=threading.Thread(target=self.__setInterval)
-#        thread.start()
-#
-#    def __setInterval(self) :
-#        nextTime=time.time()+self.interval
-#        while not self.stopEvent.wait(nextTime-time.time()) :
-#            nextTime+=self.interval
-#            self.action()
-#
-#    def cancel(self) :
-#        self.stopEvent.set()        
-
-    
