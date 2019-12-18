@@ -40,6 +40,7 @@ class Session():
   def __init__(self, credentials, **kwargs):
     self.credentials = credentials
     self.url = kwargs.get("url", "https://nanohub.org/api")
+    self.timeout = kwargs.get("timeout", 5)
     self.clearSession()
     self.validateSession()
     
@@ -53,6 +54,17 @@ class Session():
   def getUrl(self, entry_point):
     return self.url + "/" + entry_point
     
+  def requestPost(self, url, **kwargs):
+    data = kwargs.get("data", {})
+    headers = kwargs.get("headers", self.headers)
+    timeout = kwargs.get("timeout", self.timeout)
+    return requests.post(self.getUrl(url), data=data, headers=headers, timeout=timeout)
+    
+  def requestGet(self, url, **kwargs):
+    data = kwargs.get("data", {})
+    headers = kwargs.get("headers", self.headers)
+    timeout = kwargs.get("timeout", self.timeout)
+    return requests.get(self.getUrl(url), data=data, headers=headers, timeout=timeout)
 
   def validateTokenRequest( self, request, timestamp):
     auth_json = request.json()
@@ -83,7 +95,7 @@ class Session():
               'grant_type' : self.credentials['refresh_token'],
               'refresh_token' : self.refresh_token,
             }
-            request = requests.post(self.getUrl('developer/oauth/token'), data=refresh_token, headers={})
+            request = self.requestPost('developer/oauth/token', data=refresh_token, headers={}, timeout=self.timeout)
             self.validateTokenRequest(request, timestamp)
           except:
             self.clearSession();
@@ -91,7 +103,7 @@ class Session():
           self.clearSession();        
     if self.authenticated == False:
       try :
-        request = requests.post(self.getUrl('developer/oauth/token'), data=self.credentials, headers={})
+        request = self.requestPost('developer/oauth/token', data=self.credentials, headers={}, timeout=self.timeout)
         self.validateTokenRequest(request, timestamp)
       except AttributeError:
         self.clearSession()
@@ -224,7 +236,7 @@ class Tools(Session):
     Session.__init__(self, credentials, **kwargs);
     
   def list(self, filters=[]):
-    request = requests.get(self.getUrl('tools/list'), data={}, headers=self.headers)
+    request = requests.get(self.getUrl('tools/list'), data={})
     tools_request = request.json()
     tools = []
     if 'tools' in tools_request:
@@ -235,16 +247,17 @@ class Tools(Session):
       
   def info(self, toolname, version="current"):
     raise ConnectionError('Method is deprecated')
-    request = requests.post(self.getUrl('tools/info?tool='+toolname), data={}, headers=self.headers)
+    request = self.requestPost('tools/info?tool='+toolname, data={})
     info_request = request.json()
     return info_request
   
   def getResults(self, session_id, **kwargs):
+    timeout=kwargs.get("timeout", 60)  
     self.validateSession() 
     if (self.authenticated == False):
       raise ConnectionError('not connected')
     verbose = kwargs.get("verbose", False)
-    status = self.checkStatus(session_id, verbose=verbose);
+    status = self.checkStatus(session_id, verbose=verbose, timeout=timeout);
     if verbose:
       print(status);
     if 'success' in status and status['success']:
@@ -267,10 +280,11 @@ class Tools(Session):
 
 
   def loadResults(self, results_json, **kwargs):
+    timeout=kwargs.get("timeout", 30)    
     self.validateSession() 
     if (self.authenticated == False):
       raise ConnectionError('not connected')
-    request = requests.post(self.getUrl('tools/output'), data=results_json, headers=self.headers)
+    request = self.requestPost('tools/output', data=results_json, timeout=timeout)
     result_json = request.json()
     if 'output' in result_json:
         return result_json['output'];
@@ -278,20 +292,22 @@ class Tools(Session):
         return '';
                         
   def checkStatus(self, session_id, **kwargs):
+    timeout=kwargs.get("timeout", 30)    
     self.validateSession() 
     if (self.authenticated == False):
       raise ConnectionError('not connected')      
-    status_json = requests.post(self.getUrl('tools/status'), data={'session_num': str(session_id)}, headers=self.headers)
+    status_json = self.requestPost('tools/status', data={'session_num': str(session_id)}, timeout=timeout)
     verbose = kwargs.get("verbose", False)
     if verbose:
       print(status_json);
     return status_json.json()
 
   def getSession(self, driver_json, **kwargs):
+    timeout=kwargs.get("timeout", 30)      
     self.validateSession() 
     if (self.authenticated == False):
       raise ConnectionError('not connected')
-    request = requests.post(self.getUrl('/tools/run'), data=driver_json, headers=self.headers)
+    request = self.requestPost('/tools/run', data=driver_json, timeout=timeout)
     run_json = request.json()
     if 'session' in run_json:
       return run_json['session']
@@ -300,20 +316,22 @@ class Tools(Session):
       raise ConnectionError(msg)
 
   def getRapptureSchema(self, toolname, force=True, **kwargs):
+    timeout=kwargs.get("timeout", 30)      
     self.validateSession()
     if (self.authenticated == False):
       raise ConnectionError('not connected')
     if (self.cached_schema is not None and self.cached_toolname == toolname and force == False):
       return self.cached_schema
     else:
-      request = requests.post(self.getUrl('tools/' + toolname + '/rappturexml'), data={}, headers=self.headers)
+      request = self.requestPost('tools/' + toolname + '/rappturexml', data={}, timeout=timeout)
       rappturexml = request.text
       self.cached_schema = rappturexml
       self.cached_toolname = toolname
     return rappturexml;
 
   def getToolInputs(self, toolname, **kwargs):
-    xml = ET.fromstring(self.getRapptureSchema(toolname))
+    timeout=kwargs.get("timeout", 30)
+    xml = ET.fromstring(self.getRapptureSchema(toolname, timeout=timeout))
     inputs = xml.find('input')
     params = {}
     for elem in inputs.iter():
@@ -384,14 +402,17 @@ class Tools(Session):
           params [id] = param
     return params;
     
-  def getToolParameters(self, toolname):
-    inputs = self.getToolInputs(toolname)
+  def getToolParameters(self, toolname, **kwargs):
+    timeout=kwargs.get("timeout", 30)  
+    inputs = self.getToolInputs(toolname, timeout=timeout)
     params = {}
     for k,v in inputs.items():
       params[k] = ParamsFactory.builder(v);
     return params
 
   def submitTool(self, parameters, **kwargs):
+    timeout=kwargs.get("timeout", 30)  
+  
     if not isinstance(parameters, dict):
       raise ValueError("parameters object is no valid")
     
@@ -407,10 +428,10 @@ class Tools(Session):
     results = None
     if toolname is None:
       toolname = self.cached_toolname
-    xml = ET.fromstring(self.getRapptureSchema(toolname))
+    xml = ET.fromstring(self.getRapptureSchema(toolname, timeout=timeout))
     driver_str = self.generateDriver(xml, parameters)
     driver_json = {'app': toolname, 'xml': driver_str}
-    job_id = self.getSession(driver_json)
+    job_id = self.getSession(driver_json, timeout=timeout)
     if (wait_results):
       while (results is None):
         if(verbose):
@@ -419,7 +440,7 @@ class Tools(Session):
           raise TimeoutError("limit of " + str(wait_limit) + "sec have been reached, use methods checkStatus("+job_id+") / getResults("+job_id+")" )
         sleep(wait_time)
         try:
-          results = self.getResults(job_id, verbose=verbose)
+          results = self.getResults(job_id, verbose=verbose, timeout=timeout)
         except AttributeError as e :
           pass;
         except Exception as e:
