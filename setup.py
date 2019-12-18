@@ -46,7 +46,7 @@ setup_args = {
     'url'             : 'https://github.com/denphi/nanohub-remote',
     'license'         : 'BSD',
     'platforms'       : "Linux, Mac OS X, Windows",
-    'keywords'        : ['Jupyter', 'Widgets', 'IPython'],
+    'keywords'        : ['IPython'],
     'classifiers'     : [
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
