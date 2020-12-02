@@ -26,6 +26,7 @@
 
 import requests
 import json
+import re
 import xml.etree.ElementTree as ET
 import copy
 from time import sleep, time
@@ -315,7 +316,7 @@ class Tools(Session):
       msg = 'launch_tool failed ({0}): {1}\n'.format(run_json['code'], run_json['message'])
       raise ConnectionError(msg)
 
-  def getRapptureSchema(self, toolname, force=False, **kwargs):
+  def getRapptureSchema(self, toolname, force=True, **kwargs):
     timeout=kwargs.get("timeout", 30)      
     self.validateSession()
     if (self.authenticated == False):
@@ -340,18 +341,21 @@ class Tools(Session):
           id = elem.attrib['id']
       if elem.tag not in Tools.discardtags and id != "":
         if id not in params:
-          about = elem.find("about")
-          description = ""
+          descriptiont = ""
           labelt = ""
+          about = elem.find("about")
+          description = elem.find('description')
+          if description is not None:
+            descriptiont = description.text 
           if (about is not None):
             description = about.find('description')
             if description is not None:
-              description = description.text        
+              descriptiont = description.text        
             label = about.find("label")
             if (label is not None):
               labelt = label.text 
 
-          param = {"type": elem.tag, "description" : description}
+          param = {"type": elem.tag, "description" : descriptiont}
           param['id'] = id
           param['label'] = labelt                        
           param['units'] = elem.find('units')
@@ -401,6 +405,84 @@ class Tools(Session):
                 param['type'] = "text"
           params [id] = param
     return params;
+    
+  def getToolLayout(self, toolname, **kwargs):
+    timeout=kwargs.get("timeout", 30)
+    xml = ET.fromstring(self.getRapptureSchema(toolname, timeout=timeout))
+    params = {};
+    for elem in ["input", "output"]:
+      input = xml.find(elem)
+      if input is not None:
+        param = {"type": "group"}
+        param['id'] = ''
+        param['label'] = ''                        
+        param['layout'] = ''                        
+        param['children'] = self.getToolLayoutParams(input)
+        if (len([c for c in param['children'] if c["type"] not in ["group", "tab"]]) == 0 or param['layout'] == "vertical"):
+          param['type'] = 'tab'
+          param['layout'] = 'horizontal'
+        params[elem]=param
+    return params;
+    
+  def getToolLayoutParams(self, group, **kwargs):
+    params = []
+    for elem in group:
+      id = ''
+      if 'id' in elem.attrib:
+        id = elem.attrib['id']
+      about = elem.find("about")
+      labelt = None
+      enablet = None
+      layoutt = "vertical"
+      if (about is not None):
+        label = about.find("label")
+        if (label is not None):
+          labelt = label.text 
+        enable = about.find("enable")
+        if (enable is not None):
+          enablet = enable.text 
+        layout = about.find("layout")
+        if (layout is not None):
+          layoutt = layout.text 
+          
+      if (elem.tag == "phase"):
+        for p in elem:
+          params += self.getToolLayoutParams(p)
+      elif (elem.tag == "group"):
+        param = {"type": "tab"}
+        param['label'] = labelt                        
+        param['enable'] = enablet                        
+        param['layout'] = layoutt                        
+        param['children'] = self.getToolLayoutParams(elem)
+        if (len([c for c in param['children'] if c["type"] not in ["group", "tab"]]) > 0 or param['layout'] == "vertical"):
+          param['type'] = 'group'
+          param['layout'] = 'horizontal'
+        params.append(param)
+      else:
+        if elem.tag not in Tools.discardtags and id != "":
+          param = {"type": elem.tag }
+          if param['type'] == "periodicelement":
+            param['type'] = 'choice'          
+          param['id'] = id
+          param['label'] = labelt
+          param['enable'] = enablet
+          if param['enable'] is not None:
+            restrictions = re.findall(r"\(([a-zA-Z][a-zA-Z0-9_]+)\) +?([=!><]+) +?([a-zA-Z0-9_\"]+) ?([\&\|]*)?", param['enable'])
+            param['enable'] = []
+            for restriction in restrictions:
+              r = restriction[2]
+              if (r in  ["\"yes\"", "\"true\"", "\"on\"", "yes", 1, "si", True, "true", "on"]):
+                 r = True
+              elif (r in  ["\"no\"", "\"false\"", "\"off\"", "no", 0, "no", False, "false", "off"]):
+                 r = False
+              param['enable'].append({
+                'operand':restriction[0],
+                'operator':restriction[1],
+                'value':r,
+                'condition':restriction[3]
+              })
+          params.append(param)
+    return params;    
     
   def getToolParameters(self, toolname, **kwargs):
     timeout=kwargs.get("timeout", 30)  

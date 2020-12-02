@@ -20,8 +20,23 @@ class Params:
 
   def fixUnits(self, newval):
     if isinstance(newval, str):
+      if (newval == "/cm3"):
+        newval  = "1/cm3"    
+      elif (newval == "J/smK2"):
+        newval = ""         
+      newval = newval.replace("K", "k")
+      newval = newval.replace("v", "V")
+      newval = newval.replace("cm3", "cm^3")
+      newval = newval.replace("cm-3", "cm^-3")
+      newval = newval.replace("cm2", "cm^2")
+      newval = newval.replace("cm-2", "cm^-2")
+      newval = newval.replace("m3", "m^3")
+      newval = newval.replace("m2", "m^2")
+      newval = newval.replace("V-1", "V^-1")
+      newval = newval.replace("s-1", "s^-1")
+      newval = newval.replace("Vs", "(volt * sec)")
+      newval = newval.replace("Vm", "(volt * meter)") 
       newval = newval.replace('C', 'c')      
-      newval = newval.replace('cm3', 'cm^3')
       newval = newval.replace('/cm', 'cm^-1')
     else:
       newval = str(newval)
