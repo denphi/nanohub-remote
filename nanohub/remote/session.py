@@ -316,7 +316,7 @@ class Tools(Session):
       msg = 'launch_tool failed ({0}): {1}\n'.format(run_json['code'], run_json['message'])
       raise ConnectionError(msg)
 
-  def getRapptureSchema(self, toolname, force=True, **kwargs):
+  def getRapptureSchema(self, toolname, force=False, **kwargs):
     timeout=kwargs.get("timeout", 30)      
     self.validateSession()
     if (self.authenticated == False):
