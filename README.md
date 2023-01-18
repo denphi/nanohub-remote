@@ -53,3 +53,29 @@ results = tool.getResults(job_id['job_id'])
 # Submit an wait for results
 results = tool.submitTool(params, wait_results=True)
 ```
+
+## Sim2Ls
+
+```python
+TOOLNAME = '' # valid Nanoohub tool name e.g. pntoy
+s2l = nr.Sim2L(auth_data)
+
+# Get Available input parameters
+params = s2l.getToolParameters(TOOLNAME)
+
+# Submit a simulation experiment
+job_id = s2l.submitTool(params)
+
+# Check Status
+status = s2l.checkStatus(job_id['job_id'])
+
+# Get Results
+results = s2l.getResults(job_id['job_id'])
+
+# Submit an wait for results
+results = s2l.submitTool(params, wait_results=True)
+```
+
+
+
+

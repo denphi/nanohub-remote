@@ -591,28 +591,30 @@ class Tools(Session):
 
 ##############################
 
-class Sim2l(Session):
+class Sim2L(Session):
 
     def __init__(self, credentials, **kwargs):
         self.cached_schema = None
         self.cached_toolname = None
+        self.endpoint = kwargs.get("endpoint", "results", )
+
         Session.__init__(self, credentials, **kwargs)
 
     def list(self, filters=[]):
-        request = self.requestGet('dbexplorer/simtools/get', data={})
+        request = self.requestGet(self.endpoint + '/simtools/get', data={})
         tools_request = request.json()
         tools = []
         if 'tool' in tools_request:
             for tool, data in tools_request['tool'].items():
                 if len(filters) == 0 or tool in filters:
-                    tools.append(tool)
+                    tools.append(data)
         return tools
 
     def info(self, toolname, version="current"):
         url_path = toolname
         if (version is not "current"):
             url_path += "/" + version
-        request = self.requestGet('dbexplorer/simtools/get/'+url_path, data={})
+        request = self.requestGet(self.endpoint + '/simtools/get/'+url_path, data={})
         tools_request = request.json()
         if 'tool' in tools_request:
             return tools_request["tool"]
@@ -743,7 +745,7 @@ class Sim2l(Session):
         if (self.authenticated is False):
             raise ConnectionError('not connected')
         request = self.requestPost(
-            '/dbexplorer/simtools/run',
+            self.endpoint + '/simtools/run',
             data=json.dumps(driver_json),
             timeout=timeout
         )
@@ -761,7 +763,7 @@ class Sim2l(Session):
         if (self.authenticated is False):
             raise ConnectionError('not connected')
         status_json = self.requestPost(
-            'dbexplorer/simtools/run/' + str(session_id), data={}, timeout=timeout)
+            self.endpoint + '/simtools/run/' + str(session_id), data={}, timeout=timeout)
         verbose = kwargs.get("verbose", False)
         if verbose:
             print(status_json.text)
@@ -796,3 +798,5 @@ class Sim2l(Session):
                 status['code'], status['message'])
             raise ConnectionError(msg)
         raise AttributeError('results are not available')
+
+Sim2l = Sim2L
