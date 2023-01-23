@@ -612,7 +612,7 @@ class Sim2L(Session):
 
     def info(self, toolname, version="current"):
         url_path = toolname
-        if (version is not "current"):
+        if (version != "current"):
             url_path += "/" + version
         request = self.requestGet(self.endpoint + '/simtools/get/'+url_path, data={})
         tools_request = request.json()
