@@ -1,5 +1,22 @@
-# Nanohubtools
+# Nanohub remote
+# Stats
 
+<table>
+    <tr>
+        <td>Latest Release</td>
+        <td>
+            <a href="https://pypi.org/project/nanohub-remote/"/>
+            <img src="https://badge.fury.io/py/nanohub-remote.svg"/>
+        </td>
+    </tr>
+    <tr>
+        <td>PyPI Downloads</td>
+        <td>
+            <a href="https://pepy.tech/project/nanohub-remote"/>
+            <img src="https://pepy.tech/badge/nanohub-remote/month"/>
+        </td>
+    </tr>
+</table>
 A set of tools/apps to run on nanohub
 
 ## Installation
