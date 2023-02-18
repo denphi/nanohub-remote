@@ -14,6 +14,7 @@
         <td>
             <a href="https://pepy.tech/project/nanohub-remote"/>
             <img src="https://pepy.tech/badge/nanohub-remote/month"/>
+            <img src="https://pepy.tech/badge/nanohub-remote"/>
         </td>
     </tr>
 </table>
