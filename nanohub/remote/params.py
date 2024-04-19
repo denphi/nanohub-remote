@@ -301,10 +301,11 @@ class Choice(Params):
     def validate_current(self, newval):
         if (newval != None):
             newval = Params.validate_current(self, newval)
-            if newval not in [p[0] for p in self.options]:
-                if newval not in [p[1] for p in self.options]:
-                    raise ValueError(
-                        "values should be one of the posible options")
+            if len(self.options) > 0 and newval not in self.options:
+                if and newval not in [p[0] for p in self.options]:
+                    if newval not in [p[1] for p in self.options]:
+                        raise ValueError(
+                        str(newval) + " value should be one of the posible options" + json.dumps(self.options))
             return newval
         return newval
 
