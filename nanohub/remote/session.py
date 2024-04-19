@@ -718,7 +718,7 @@ class Sim2L(Session):
             'outputs': list(schema['outputs'].keys()),
             'cores': kwargs.get('cores', 1),
             'cutoff': kwargs.get('cutoff', 15),
-            'venue': kwargs.get('venue', "headnode@brown_tapis_split")
+            'venue': kwargs.get('venue', "")
         }
         job_id = self.getSession(driver_json, timeout=timeout)
 
