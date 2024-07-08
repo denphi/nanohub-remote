@@ -38,7 +38,7 @@ pip install nanohub-remote
 
 ```python
 
-import nanohub.remote as nr
+import nanohubremote as nr
 auth_data = {
   'client_id': XXXXXXXX,
   'client_secret': XXXXXXXX,
