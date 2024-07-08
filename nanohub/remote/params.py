@@ -298,6 +298,7 @@ class Choice(Params):
         self.options = kwargs.get('options', [])
         Params.__init__(self, **kwargs)
 
+
     def validate_current(self, newval):
         if (newval != None):
             newval = Params.validate_current(self, newval)
