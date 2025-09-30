@@ -50,7 +50,10 @@ class Session():
         if self.credentials["grant_type"] == "personal_token":
             self.authenticated = True
             self.access_token = self.credentials["token"]
-            self.headers = {'Authorization': 'Bearer '+ self.access_token}
+            self.headers = {
+                'Authorization': 'Bearer '+ self.access_token,
+                'Referer': self.url
+            }
             self.refresh_token = self.credentials["token"]
             self.expires_in = 14400
         else:

@@ -5,14 +5,12 @@
 # Distributed under the terms of the Modified BSD License.
 
 from __future__ import print_function
-from glob import glob
+from setuptools import setup, find_packages
 from os.path import join as pjoin
+from glob import glob
 
-
-from setupbase import (
-    create_cmdclass, install_npm, ensure_targets,
-    find_packages, combine_commands, ensure_python,
-    get_version, HERE
+from jupyter_packaging import (
+    get_version,
 )
 
 from setuptools import setup
@@ -20,9 +18,6 @@ from setuptools import setup
 
 # The name of the project
 name = 'nanohub-remote'
-
-# Ensure a valid python version
-ensure_python('>=3.3')
 
 # Get our version
 version = get_version(pjoin('nanohub', 'remote', '_version.py'))
@@ -53,9 +48,6 @@ setup_args = {
         'License :: OSI Approved :: BSD License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
         'Framework :: Jupyter',
     ],
     'include_package_data' : True,
@@ -74,5 +66,4 @@ setup_args = {
     },
 }
 
-if __name__ == '__main__':
-    setup(**setup_args)
+setup(**setup_args)

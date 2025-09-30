@@ -26,6 +26,7 @@
 
 
 from .session import *
+from .project import Project
 
 from ._version import __version__, version_info
 
