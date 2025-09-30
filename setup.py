@@ -20,7 +20,7 @@ from setuptools import setup
 name = 'nanohub-remote'
 
 # Get our version
-version = get_version(pjoin('nanohub', 'remote', '_version.py'))
+version = get_version(pjoin('nanohubremote', '_version.py'))
 
 long_description = ""
 with open("README.md", "r") as fh:
