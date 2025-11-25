@@ -1,3 +1,28 @@
+#  Copyright 2025 HUBzero Foundation, LLC.
+#
+#  Permission is hereby granted, free of charge, to any person obtaining a copy
+#  of this software and associated documentation files (the "Software"), to deal
+#  in the Software without restriction, including without limitation the rights
+#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#  copies of the Software, and to permit persons to whom the Software is
+#  furnished to do so, subject to the following conditions:
+#
+#  The above copyright notice and this permission notice shall be included in
+#  all copies or substantial portions of the Software.
+#
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+#  THE SOFTWARE.
+
+#  HUBzero is a registered trademark of Purdue University.
+
+#  Authors:
+#  Daniel Mejia (denphi), Purdue University (denphi@denphi.com)
+
 import numpy as np
 from pint import UnitRegistry
 
@@ -7,7 +32,16 @@ ureg.autoconvert_offset_to_baseunit = True
 
 
 class Params:
+    """
+    Base class for tool parameters.
+    """
     def __init__(self, **kwargs):
+        """
+        Initialize the parameter.
+
+        Args:
+            **kwargs: Parameter attributes (id, label, description, units, default, current, disable_fix).
+        """
         self.disable_fix = kwargs.get('disable_fix', False)
         self._units = None
         self.validator = None
@@ -21,6 +55,15 @@ class Params:
         self.current = kwargs.get('current', None)
 
     def fixUnits(self, newval):
+        """
+        Fix unit formatting.
+
+        Args:
+            newval (str): The value with units.
+
+        Returns:
+            str: The value with fixed units.
+        """
         if isinstance(newval, str) and self.disable_fix == False:
             if (newval == "/cm3"):
                 newval = "1/cm3"
@@ -45,6 +88,15 @@ class Params:
         return newval
 
     def validate_current(self, newval):
+        """
+        Validate the current value.
+
+        Args:
+            newval: The new value to validate.
+
+        Returns:
+            The validated value.
+        """
         if (newval != None):
             if (self._units != None):
                 newval = self.fixUnits(newval)
@@ -82,6 +134,15 @@ class Params:
         self._current = self.validate_current(newval)
 
     def validate_units(self, newval):
+        """
+        Validate the units.
+
+        Args:
+            newval (str): The new units.
+
+        Returns:
+            str: The validated units.
+        """
         if (newval == ""):
             newval = None
         if (newval != None):
@@ -99,6 +160,12 @@ class Params:
         self._units = self.validate_units(newval)
 
     def to_dict(self):
+        """
+        Convert the parameter to a dictionary.
+
+        Returns:
+            dict: The parameter dictionary.
+        """
         res = {'type': 'Param'}
         res['id'] = self.id
         if (self._current is not None):
@@ -123,7 +190,19 @@ class Params:
 
 
 class ParamsFactory:
+    """
+    Factory class for creating parameter objects.
+    """
     def builder(descriptor):
+        """
+        Build a parameter object from a descriptor.
+
+        Args:
+            descriptor (dict): The parameter descriptor.
+
+        Returns:
+            Params: The created parameter object.
+        """
         if 'type' in descriptor:
             if (descriptor['type'] == "integer"):
                 return Integer(**descriptor)
@@ -144,7 +223,16 @@ class ParamsFactory:
 
 
 class Integer(Params):
+    """
+    Integer parameter.
+    """
     def __init__(self, **kwargs):
+        """
+        Initialize the Integer parameter.
+
+        Args:
+            **kwargs: Parameter attributes (min, max, etc.).
+        """
         self.disable_fix = kwargs.get('disable_fix', False)
         self._min = None
         self._max = None
@@ -195,6 +283,18 @@ class Integer(Params):
             self._current = None
 
     def validate_current(self, newval):
+        """
+        Validate the current value.
+
+        Args:
+            newval: The new value to validate.
+
+        Returns:
+            int: The validated integer value.
+
+        Raises:
+            ValueError: If value is out of range.
+        """
         if (newval != None):
             newval = Params.validate_current(self, newval)
             if self._units is not None:
@@ -208,6 +308,12 @@ class Integer(Params):
         return newval
 
     def to_dict(self):
+        """
+        Convert the parameter to a dictionary.
+
+        Returns:
+            dict: The parameter dictionary.
+        """
         res = Params.to_dict(self)
         if (self._min is not None):
             res['min'] = self._min
@@ -218,7 +324,16 @@ class Integer(Params):
 
 
 class Number(Params):
+    """
+    Number (float) parameter.
+    """
     def __init__(self, **kwargs):
+        """
+        Initialize the Number parameter.
+
+        Args:
+            **kwargs: Parameter attributes (min, max, etc.).
+        """
         self.disable_fix = kwargs.get('disable_fix', False)
         self._units = None
         self.validator = None
@@ -269,6 +384,18 @@ class Number(Params):
             self._current = None
 
     def validate_current(self, newval):
+        """
+        Validate the current value.
+
+        Args:
+            newval: The new value to validate.
+
+        Returns:
+            float: The validated float value.
+
+        Raises:
+            ValueError: If value is out of range.
+        """
         if (newval != None):
             newval = Params.validate_current(self, newval)
             units = ""
@@ -283,6 +410,12 @@ class Number(Params):
         return newval
 
     def to_dict(self):
+        """
+        Convert the parameter to a dictionary.
+
+        Returns:
+            dict: The parameter dictionary.
+        """
         res = Params.to_dict(self)
         if (self._min is not None):
             res['min'] = self._min
@@ -293,13 +426,34 @@ class Number(Params):
 
 
 class Choice(Params):
+    """
+    Choice parameter (selection from options).
+    """
     def __init__(self, **kwargs):
+        """
+        Initialize the Choice parameter.
+
+        Args:
+            **kwargs: Parameter attributes (options, etc.).
+        """
         # always set these first
         self.options = kwargs.get('options', [])
         Params.__init__(self, **kwargs)
 
 
     def validate_current(self, newval):
+        """
+        Validate the current value.
+
+        Args:
+            newval: The new value to validate.
+
+        Returns:
+            The validated value.
+
+        Raises:
+            ValueError: If value is not a valid option.
+        """
         if (newval != None):
             newval = Params.validate_current(self, newval)
             if len(self.options) > 0 and newval not in self.options:
@@ -311,6 +465,12 @@ class Choice(Params):
         return newval
 
     def to_dict(self):
+        """
+        Convert the parameter to a dictionary.
+
+        Returns:
+            dict: The parameter dictionary.
+        """
         res = Params.to_dict(self)
         if (self.options is not None):
             res['options'] = self.options
@@ -319,26 +479,71 @@ class Choice(Params):
 
 
 class String(Params):
+    """
+    String parameter.
+    """
     def __init__(self, **kwargs):
+        """
+        Initialize the String parameter.
+
+        Args:
+            **kwargs: Parameter attributes.
+        """
         Params.__init__(self, **kwargs)
 
     def validate_current(self, newval):
+        """
+        Validate the current value.
+
+        Args:
+            newval: The new value to validate.
+
+        Returns:
+            str: The validated string value.
+        """
         if (newval != None):
             newval = Params.validate_current(self, newval)
             return str(newval)
         return newval
 
     def to_dict(self):
+        """
+        Convert the parameter to a dictionary.
+
+        Returns:
+            dict: The parameter dictionary.
+        """
         res = Params.to_dict(self)
         res['type'] = "String"
         return res
 
 
 class Boolean(Params):
+    """
+    Boolean parameter.
+    """
     def __init__(self, **kwargs):
+        """
+        Initialize the Boolean parameter.
+
+        Args:
+            **kwargs: Parameter attributes.
+        """
         Params.__init__(self, **kwargs)
 
     def validate_current(self, newval):
+        """
+        Validate the current value.
+
+        Args:
+            newval: The new value to validate.
+
+        Returns:
+            str: "yes" or "no".
+
+        Raises:
+            ValueError: If value is not a valid boolean.
+        """
         if (newval != None):
             newval = Params.validate_current(self, newval)
             if (newval in ["yes", 1, "si", True, "true", "on"]):
@@ -350,6 +555,12 @@ class Boolean(Params):
         return newval
 
     def to_dict(self):
+        """
+        Convert the parameter to a dictionary.
+
+        Returns:
+            dict: The parameter dictionary.
+        """
         res = Params.to_dict(self)
         res['type'] = "Boolean"
         return res

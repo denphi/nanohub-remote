@@ -1,5 +1,5 @@
-#  Copyright 2019 HUBzero Foundation, LLC.
-
+#  Copyright 2025 HUBzero Foundation, LLC.
+#
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
 #  of this software and associated documentation files (the "Software"), to deal
 #  in the Software without restriction, including without limitation the rights
@@ -23,6 +23,13 @@
 #  Authors:
 #  Daniel Mejia (denphi), Purdue University (denphi@denphi.com)
 #  Benjamin P. Haley, Purdue University (bhaley@purdue.edu)
+
+"""
+nanohubremote package.
+
+This package provides tools to interact with nanoHUB web APIs, including
+session management, tool execution, and project file manipulation.
+"""
 
 
 from .session import *

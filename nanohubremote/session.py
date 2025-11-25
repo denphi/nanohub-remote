@@ -1,5 +1,5 @@
-#  Copyright 2019 HUBzero Foundation, LLC.
-
+#  Copyright 2025 HUBzero Foundation, LLC.
+#
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
 #  of this software and associated documentation files (the "Software"), to deal
 #  in the Software without restriction, including without limitation the rights
@@ -35,11 +35,28 @@ from .output import OutputFactory, Output
 
 
 class Session():
+    """
+    Base class for managing a session with the nanoHUB API.
+
+    Attributes:
+        credentials (dict): Dictionary containing authentication credentials.
+        headers (dict): Dictionary of HTTP headers to be sent with requests.
+        authenticated (bool): Flag indicating if the session is authenticated.
+    """
     credentials = {}
     headers = {}
     authenticated = False
 
     def __init__(self, credentials, **kwargs):
+        """
+        Initialize the Session.
+
+        Args:
+            credentials (dict): Authentication credentials.
+            **kwargs: Additional arguments.
+                url (str): Base URL for the API. Defaults to "https://nanohub.org/api".
+                timeout (int): Request timeout in seconds. Defaults to 5.
+        """
         self.credentials = credentials
         self.url = kwargs.get("url", "https://nanohub.org/api")
         self.timeout = kwargs.get("timeout", 5)
@@ -47,6 +64,9 @@ class Session():
         self.validateSession()
 
     def clearSession(self):
+        """
+        Clear the current session and reset authentication state.
+        """
         if self.credentials["grant_type"] == "personal_token":
             self.authenticated = True
             self.access_token = self.credentials["token"]
@@ -64,21 +84,61 @@ class Session():
             self.expires_in = 0
 
     def getUrl(self, entry_point):
+        """
+        Construct the full URL for a given API entry point.
+
+        Args:
+            entry_point (str): The API endpoint path.
+
+        Returns:
+            str: The full URL.
+        """
         return self.url + "/" + entry_point
 
     def requestPost(self, url, **kwargs):
+        """
+        Perform a POST request to the API.
+
+        Args:
+            url (str): The API endpoint.
+            **kwargs: Additional arguments for the request (data, headers, timeout).
+
+        Returns:
+            requests.Response: The response object.
+        """
         data = kwargs.get("data", {})
         headers = kwargs.get("headers", self.headers)
         timeout = kwargs.get("timeout", self.timeout)
         return requests.post(self.getUrl(url), data=data, headers=headers, timeout=timeout)
 
     def requestGet(self, url, **kwargs):
+        """
+        Perform a GET request to the API.
+
+        Args:
+            url (str): The API endpoint.
+            **kwargs: Additional arguments for the request (data, headers, timeout).
+
+        Returns:
+            requests.Response: The response object.
+        """
         data = kwargs.get("data", {})
         headers = kwargs.get("headers", self.headers)
         timeout = kwargs.get("timeout", self.timeout)
         return requests.get(self.getUrl(url), data=data, headers=headers, timeout=timeout)
 
     def validateTokenRequest(self, request, timestamp):
+        """
+        Validate the response from a token request and update session state.
+
+        Args:
+            request (requests.Response): The response from the token request.
+            timestamp (int): The current timestamp.
+
+        Raises:
+            ConnectionError: If the response contains errors.
+            AttributeError: If expected fields are missing in the response.
+        """
         auth_json = request.json()
         if 'errors' in auth_json:
             raise ConnectionError(json.dumps(auth_json['errors']))
@@ -96,6 +156,12 @@ class Session():
         self.authenticated = True
 
     def validateSession(self):
+        """
+        Ensure the session is valid and authenticated. Refreshes token if necessary.
+
+        Raises:
+            ConnectionError: If authentication fails or token is missing.
+        """
         if self.credentials["grant_type"] == "personal_token":
             return
 
@@ -142,6 +208,9 @@ class Session():
 
 
 class Tools(Session):
+    """
+    Class for interacting with standard nanoHUB tools (Rappture-based).
+    """
     periodicelement = [
         ('Hydrogen', 'H'),
         ('Helium', 'He'),
@@ -261,6 +330,15 @@ class Tools(Session):
         Session.__init__(self, credentials, **kwargs)
 
     def list(self, filters=[]):
+        """
+        List available tools.
+
+        Args:
+            filters (list): List of tool aliases to filter by.
+
+        Returns:
+            list: List of tool dictionaries.
+        """
         request = requests.get(self.getUrl('tools/list'), data={})
         tools_request = request.json()
         tools = []
@@ -271,12 +349,36 @@ class Tools(Session):
         return tools
 
     def info(self, toolname, version="current"):
+        """
+        Get information about a tool.
+
+        Args:
+            toolname (str): Name of the tool.
+            version (str): Tool version. Defaults to "current".
+
+        Returns:
+            dict: Tool information.
+        """
         raise ConnectionError('Method is deprecated')
         request = self.requestPost('tools/info?tool='+toolname, data={})
         info_request = request.json()
         return info_request
 
     def getResults(self, session_id, **kwargs):
+        """
+        Get results for a specific session.
+
+        Args:
+            session_id (str): The session ID.
+            **kwargs: Additional arguments (timeout, verbose).
+
+        Returns:
+            list: List of Output objects.
+
+        Raises:
+            ConnectionError: If not connected.
+            AttributeError: If results are not available.
+        """
         timeout = kwargs.get("timeout", 60)
         self.validateSession()
         if (self.authenticated is False):
@@ -304,6 +406,16 @@ class Tools(Session):
         raise AttributeError('results are not available')
 
     def loadResults(self, results_json, **kwargs):
+        """
+        Load results from the server.
+
+        Args:
+            results_json (dict): JSON containing session info.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            str: XML string of results.
+        """
         timeout = kwargs.get("timeout", 30)
         self.validateSession()
         if (self.authenticated is False):
@@ -317,6 +429,16 @@ class Tools(Session):
             return ''
 
     def checkStatus(self, session_id, **kwargs):
+        """
+        Check the status of a session.
+
+        Args:
+            session_id (str): The session ID.
+            **kwargs: Additional arguments (timeout, verbose).
+
+        Returns:
+            dict: Status dictionary.
+        """
         timeout = kwargs.get("timeout", 30)
         self.validateSession()
         if (self.authenticated is False):
@@ -329,6 +451,19 @@ class Tools(Session):
         return status_json.json()
 
     def getSession(self, driver_json, **kwargs):
+        """
+        Start a tool session.
+
+        Args:
+            driver_json (dict): Driver configuration for the tool.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            str: The session ID.
+
+        Raises:
+            ConnectionError: If launch fails.
+        """
         timeout = kwargs.get("timeout", 30)
         self.validateSession()
         if (self.authenticated is False):
@@ -344,6 +479,17 @@ class Tools(Session):
             raise ConnectionError(msg)
 
     def getRapptureSchema(self, toolname, force=False, **kwargs):
+        """
+        Get the Rappture XML schema for a tool.
+
+        Args:
+            toolname (str): Name of the tool.
+            force (bool): Force refresh of cached schema.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            str: Rappture XML schema.
+        """
         timeout = kwargs.get("timeout", 30)
         self.validateSession()
         if (self.authenticated is False):
@@ -359,6 +505,16 @@ class Tools(Session):
         return rappturexml
 
     def getToolInputs(self, toolname, **kwargs):
+        """
+        Get tool input parameters from the schema.
+
+        Args:
+            toolname (str): Name of the tool.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            dict: Dictionary of input parameters.
+        """
         timeout = kwargs.get("timeout", 30)
         xml = ET.fromstring(self.getRapptureSchema(toolname, timeout=timeout))
         inputs = xml.find('input')
@@ -435,6 +591,16 @@ class Tools(Session):
         return params
 
     def getToolLayout(self, toolname, **kwargs):
+        """
+        Get the layout of the tool's user interface.
+
+        Args:
+            toolname (str): Name of the tool.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            dict: Layout dictionary.
+        """
         timeout = kwargs.get("timeout", 30)
         xml = ET.fromstring(self.getRapptureSchema(toolname, timeout=timeout))
         params = {}
@@ -453,6 +619,16 @@ class Tools(Session):
         return params
 
     def getToolLayoutParams(self, group, **kwargs):
+        """
+        Recursively parse layout parameters.
+
+        Args:
+            group (xml.etree.ElementTree.Element): XML element representing a group.
+            **kwargs: Additional arguments.
+
+        Returns:
+            list: List of layout parameters.
+        """
         params = []
         for elem in group:
             id = ''
@@ -514,6 +690,16 @@ class Tools(Session):
         return params
 
     def getToolParameters(self, toolname, **kwargs):
+        """
+        Get tool parameters as Params objects.
+
+        Args:
+            toolname (str): Name of the tool.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            dict: Dictionary of Params objects, keyed by parameter ID.
+        """
         timeout = kwargs.get("timeout", 30)
         inputs = self.getToolInputs(toolname, timeout=timeout)
         params = {}
@@ -522,6 +708,16 @@ class Tools(Session):
         return params
 
     def submitTool(self, parameters, **kwargs):
+        """
+        Submit a tool for execution.
+
+        Args:
+            parameters (dict): Dictionary of parameter values.
+            **kwargs: Additional arguments (toolname, wait_results, wait_time, wait_limit, verbose, timeout).
+
+        Returns:
+            dict: Dictionary containing job_id and results (if waited).
+        """
         timeout = kwargs.get("timeout", 30)
 
         if not isinstance(parameters, dict):
@@ -562,6 +758,16 @@ class Tools(Session):
         return {'job_id': job_id, 'results': results}
 
     def generateDriver(self, schema, parameters):
+        """
+        Generate the driver XML for tool submission.
+
+        Args:
+            schema (xml.etree.ElementTree.Element): The tool schema.
+            parameters (dict): The parameter values.
+
+        Returns:
+            str: The driver XML string.
+        """
         xml = schema
         for elem in xml.iter():
             if elem.tag == "structure":
@@ -605,6 +811,9 @@ class Tools(Session):
 ##############################
 
 class Sim2L(Session):
+    """
+    Class for interacting with Sim2L tools (Jupyter-based).
+    """
 
     def __init__(self, credentials, **kwargs):
         self.cached_schema = None
@@ -614,6 +823,15 @@ class Sim2L(Session):
         Session.__init__(self, credentials, **kwargs)
 
     def list(self, filters=[]):
+        """
+        List available Sim2L tools.
+
+        Args:
+            filters (list): List of tool aliases to filter by.
+
+        Returns:
+            list: List of tool dictionaries.
+        """
         request = self.requestGet(self.endpoint + '/simtools/get', data={})
         tools_request = request.json()
         tools = []
@@ -624,6 +842,16 @@ class Sim2L(Session):
         return tools
 
     def info(self, toolname, version="current"):
+        """
+        Get information about a Sim2L tool.
+
+        Args:
+            toolname (str): Name of the tool.
+            version (str): Tool version. Defaults to "current".
+
+        Returns:
+            dict: Tool information.
+        """
         url_path = toolname
         if (version != "current"):
             url_path += "/" + version
@@ -637,6 +865,17 @@ class Sim2L(Session):
             raise Exception("Schema not found")
 
     def getSchema(self, toolname, force=False, **kwargs):
+        """
+        Get the schema for a Sim2L tool.
+
+        Args:
+            toolname (str): Name of the tool.
+            force (bool): Force refresh of cached schema.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            dict: Tool schema.
+        """
         timeout = kwargs.get("timeout", 30)
         self.validateSession()
         if (self.authenticated is False):
@@ -653,6 +892,16 @@ class Sim2L(Session):
         return self.cached_schema
 
     def getToolInputs(self, toolname, **kwargs):
+        """
+        Get tool input parameters from the schema.
+
+        Args:
+            toolname (str): Name of the tool.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            dict: Dictionary of input parameters.
+        """
         timeout = kwargs.get("timeout", 30)
         schema = self.getSchema(toolname, timeout=timeout)
         params = {}
@@ -675,14 +924,44 @@ class Sim2L(Session):
         return params
 
     def getToolLayout(self, toolname, **kwargs):
+        """
+        Get the layout of the tool's user interface.
+
+        Args:
+            toolname (str): Name of the tool.
+            **kwargs: Additional arguments.
+
+        Returns:
+            dict: Empty dictionary (Sim2L tools handle layout differently).
+        """
         params = {}
         return params
 
     def getToolLayoutParams(self, group, **kwargs):
+        """
+        Recursively parse layout parameters.
+
+        Args:
+            group: Group element.
+            **kwargs: Additional arguments.
+
+        Returns:
+            list: Empty list.
+        """
         params = []
         return params
 
     def getToolParameters(self, toolname, **kwargs):
+        """
+        Get tool parameters as Params objects.
+
+        Args:
+            toolname (str): Name of the tool.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            dict: Dictionary of Params objects.
+        """
         timeout = kwargs.get("timeout", 30)
         inputs = self.getToolInputs(toolname, timeout=timeout)
         params = {}
@@ -692,6 +971,16 @@ class Sim2L(Session):
         return params
 
     def generateDriver(self, schema, parameters):
+        """
+        Generate the driver dictionary for tool submission.
+
+        Args:
+            schema (dict): The tool schema.
+            parameters (dict): The parameter values.
+
+        Returns:
+            dict: The driver dictionary.
+        """
         inputs = schema["inputs"]
         driver = {}
         for k, v in inputs.items():
@@ -705,6 +994,16 @@ class Sim2L(Session):
         return driver
 
     def submitTool(self, parameters, **kwargs):
+        """
+        Submit a tool for execution.
+
+        Args:
+            parameters (dict): Dictionary of parameter values.
+            **kwargs: Additional arguments (toolname, wait_results, wait_time, wait_limit, verbose, timeout, cores, cutoff, venue).
+
+        Returns:
+            dict: Dictionary containing job_id and results (if waited).
+        """
         timeout = kwargs.get("timeout", 30)
 
         if not isinstance(parameters, dict):
@@ -753,6 +1052,19 @@ class Sim2L(Session):
         return {'job_id': job_id, 'results': results}
 
     def getSession(self, driver_json, **kwargs):
+        """
+        Start a tool session.
+
+        Args:
+            driver_json (dict): Driver configuration for the tool.
+            **kwargs: Additional arguments (timeout).
+
+        Returns:
+            str: The session ID.
+
+        Raises:
+            ConnectionError: If launch fails.
+        """
         timeout = kwargs.get("timeout", 30)
         self.validateSession()
         if (self.authenticated is False):
@@ -771,6 +1083,16 @@ class Sim2L(Session):
             raise ConnectionError(msg)
 
     def checkStatus(self, session_id, **kwargs):
+        """
+        Check the status of a session.
+
+        Args:
+            session_id (str): The session ID.
+            **kwargs: Additional arguments (timeout, verbose).
+
+        Returns:
+            dict: Status dictionary.
+        """
         timeout = kwargs.get("timeout", 30)
         self.validateSession()
         if (self.authenticated is False):
@@ -783,6 +1105,19 @@ class Sim2L(Session):
         return status_json.json()
 
     def getResults(self, session_id, **kwargs):
+        """
+        Get results for a specific session.
+
+        Args:
+            session_id (str): The session ID.
+            **kwargs: Additional arguments (timeout, verbose).
+
+        Returns:
+            list: List of Output objects.
+
+        Raises:
+            ConnectionError: If not connected.
+        """
         timeout = kwargs.get("timeout", 60)
         self.validateSession()
         if (self.authenticated is False):

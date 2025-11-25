@@ -1,3 +1,28 @@
+#  Copyright 2025 HUBzero Foundation, LLC.
+#
+#  Permission is hereby granted, free of charge, to any person obtaining a copy
+#  of this software and associated documentation files (the "Software"), to deal
+#  in the Software without restriction, including without limitation the rights
+#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#  copies of the Software, and to permit persons to whom the Software is
+#  furnished to do so, subject to the following conditions:
+#
+#  The above copyright notice and this permission notice shall be included in
+#  all copies or substantial portions of the Software.
+#
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+#  THE SOFTWARE.
+
+#  HUBzero is a registered trademark of Purdue University.
+
+#  Authors:
+#  Daniel Mejia (denphi), Purdue University (denphi@denphi.com)
+
 from fs.base import FS
 from fs.info import Info
 from fs.mode import Mode
@@ -21,10 +46,32 @@ from .session import Session
 
 
 class Project(Session):
+    """
+    Class for interacting with nanoHUB projects.
+    """
     def __init__(self, credentials, **kwargs):
+        """
+        Initialize the Project session.
+
+        Args:
+            credentials (dict): Authentication credentials.
+            **kwargs: Additional arguments.
+        """
         Session.__init__(self, credentials, **kwargs)
 
     def files(self, project):
+        """
+        Get a filesystem interface for a project.
+
+        Args:
+            project (str or int): The project ID or alias.
+
+        Returns:
+            ProjectFilesFS: A PyFilesystem2 interface to the project files.
+
+        Raises:
+            ConnectionError: If the project is invalid.
+        """
         try:
             rest = self.requestGet('projects/'+str(project))
             rest = rest.json()
@@ -66,6 +113,14 @@ class ProjectFilesFS(FS):
         project_id: str,
         token: str
     ):
+        """
+        Initialize the ProjectFilesFS.
+
+        Args:
+            base_url (str): The base URL of the API.
+            project_id (str): The project ID.
+            token (str): The authentication token.
+        """
         super().__init__()
         self.base_url = base_url.rstrip("/")
         self.project_id = str(project_id)
@@ -80,9 +135,36 @@ class ProjectFilesFS(FS):
     # Helper HTTP / API methods
     # -------------------------
     def _url(self, path: str) -> str:
+        """
+        Construct the full URL for a given path.
+
+        Args:
+            path (str): The path to append to the base URL.
+
+        Returns:
+            str: The full URL.
+        """
         return f"{self.base_url}{path}"
 
     def _request(self, method: str, path: str, params=None, data=None, files=None, json_body=None, stream=False):
+        """
+        Perform an HTTP request.
+
+        Args:
+            method (str): HTTP method (GET, POST, etc.).
+            path (str): API endpoint path.
+            params (dict): Query parameters.
+            data (dict): Form data.
+            files (dict): Files to upload.
+            json_body (dict): JSON body.
+            stream (bool): Whether to stream the response.
+
+        Returns:
+            requests.Response: The response object.
+
+        Raises:
+            FSError: If a request exception occurs.
+        """
         url = self._url(path)
         try:
             resp = self.session.request(
@@ -106,12 +188,30 @@ class ProjectFilesFS(FS):
     # Path helpers
     # -------------------------
     def _normalize_path(self, path: str) -> str:
+        """
+        Normalize a path for the API.
+
+        Args:
+            path (str): The path to normalize.
+
+        Returns:
+            str: The normalized path.
+        """
         p = relpath(path)
         if p == ".":
             return ""
         return p
 
     def _asset_param(self, path: str) -> List[str]:
+        """
+        Prepare asset parameter for API calls.
+
+        Args:
+            path (str): The file path.
+
+        Returns:
+            List[str]: List containing the normalized path, or empty list for root.
+        """
         """API expects asset=array param with file/folder paths"""
         p = self._normalize_path(path)
         if p == "":
@@ -238,6 +338,20 @@ class ProjectFilesFS(FS):
     # Make directory
     # -------------------------
     def makedir(self, path: str, permissions=None, recreate=False):
+        """
+        Make a directory.
+
+        Args:
+            path (str): Path to directory.
+            permissions (int): Permissions (ignored).
+            recreate (bool): Recreate if exists (ignored).
+
+        Returns:
+            SubFS: SubFS for the created directory.
+
+        Raises:
+            CreateFailed: If creation fails.
+        """
         path = self._normalize_path(path)
         params = {"directory": path}
         resp = self._request(
@@ -254,6 +368,16 @@ class ProjectFilesFS(FS):
     # Remove file / folder
     # -------------------------
     def remove(self, path):
+        """
+        Remove a file.
+
+        Args:
+            path (str): Path to file.
+
+        Raises:
+            ResourceNotFound: If file not found.
+            PermissionDenied: If permission denied.
+        """
         r = self.session.get(f"{self.base_url}/projects/{self.project_id}/filefs/delete",
                             params={"asset[]": [path]})
         if r.status_code == 404:
@@ -264,6 +388,13 @@ class ProjectFilesFS(FS):
 
 
     def setinfo(self, path, info):
+        """
+        Set file information (metadata).
+
+        Args:
+            path (str): Path to file.
+            info (dict): Info dictionary.
+        """
         # Extract metadata from "info" dict
         metadata = info.raw.get("details", {})
         if not metadata:
@@ -280,6 +411,17 @@ class ProjectFilesFS(FS):
         r.raise_for_status()
 
     def removedir(self, path):
+        """
+        Remove a directory.
+
+        Args:
+            path (str): Path to directory.
+
+        Raises:
+            ResourceNotFound: If directory not found.
+            PermissionDenied: If permission denied.
+            DirectoryNotEmpty: If directory is not empty.
+        """
         r = self.session.get(f"{self.base_url}/projects/{self.project_id}/filefs/delete",
                             params={"folder[]": [path]})
         if r.status_code == 404:
@@ -440,10 +582,18 @@ class ProjectFilesFS(FS):
     # -------------------------
     def _upload_file_stream(self, fileobj, path: str, subdir: Optional[str]):
         """
-        Upload an already-open file-like object (seek to start expected) via:
-        POST /projects/{id}/filefs/upload
-        params: subdir
-        files: file binary, named appropriately
+        Upload an already-open file-like object.
+
+        Args:
+            fileobj (file-like): The file object to upload.
+            path (str): The destination path.
+            subdir (str, optional): The subdirectory.
+
+        Returns:
+            dict or str: The response from the server.
+
+        Raises:
+            CreateFailed: If upload fails.
         """
         # name the multipart file field; server expects 'file' param
         files = {"qqfile": (basename(path) or "upload.bin", fileobj)}
@@ -484,6 +634,20 @@ class ProjectFilesFS(FS):
         return resp.json()
 
     def set_file_metadata(self, asset_path: str, metadata: Dict[str, Any], subdir: Optional[str] = None):
+        """
+        Set metadata for a file.
+
+        Args:
+            asset_path (str): Path to the asset.
+            metadata (dict): Metadata to set.
+            subdir (str, optional): Subdirectory.
+
+        Returns:
+            dict: The response from the server.
+
+        Raises:
+            FSError: If setting metadata fails.
+        """
         params = {"asset": asset_path}
         if subdir:
             params["subdir"] = subdir
@@ -504,18 +668,45 @@ class ProjectFilesFS(FS):
     # Required FS abstract methods no-op / trivial mapping
     # -------------------------
     def isdir(self, path: str):
+        """
+        Check if a path is a directory.
+
+        Args:
+            path (str): Path to check.
+
+        Returns:
+            bool: True if directory, False otherwise.
+        """
         try:
             return self.getinfo(path).is_dir
         except ResourceNotFound:
             return False
 
     def isfile(self, path: str):
+        """
+        Check if a path is a file.
+
+        Args:
+            path (str): Path to check.
+
+        Returns:
+            bool: True if file, False otherwise.
+        """
         try:
             return not self.getinfo(path).is_dir
         except ResourceNotFound:
             return False
 
     def exists(self, path: str) -> bool:
+        """
+        Check if a path exists.
+
+        Args:
+            path (str): Path to check.
+
+        Returns:
+            bool: True if exists, False otherwise.
+        """
         try:
             self.getinfo(path)
             return True
@@ -523,6 +714,9 @@ class ProjectFilesFS(FS):
             return False
 
     def close(self):
+        """
+        Close the filesystem and the underlying session.
+        """
         try:
             self.session.close()
         except Exception:
