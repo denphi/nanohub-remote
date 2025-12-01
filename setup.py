@@ -55,6 +55,9 @@ setup_args = {
         'requests>=2.25.0',
         'urllib3>=1.26.0',
         'fs>=2.4.0',
+        'numpy>=1.20.0',
+        'pint>=0.18',
+        'simtool',
     ],
     'extras_require' : {
         'test': [
