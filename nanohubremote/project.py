@@ -77,13 +77,14 @@ class Project(Session):
             rest = rest.json()
             rest = rest["project"]
             rest = rest["id"]
-        except:
-            raise ConnectionError("Invalid Project")
-        
+        except Exception as e:
+            raise ConnectionError(f"Invalid Project: {str(e)}")
+
         return ProjectFilesFS (
-            self.url, 
+            self.url,
             project_id=str(rest),
-            token=self.access_token
+            token=self.access_token,
+            session=self._session  # Reuse the Session's underlying requests.Session
         )
 
 
@@ -111,7 +112,8 @@ class ProjectFilesFS(FS):
         self,
         base_url: str,
         project_id: str,
-        token: str
+        token: str,
+        session: requests.Session = None
     ):
         """
         Initialize the ProjectFilesFS.
@@ -120,11 +122,21 @@ class ProjectFilesFS(FS):
             base_url (str): The base URL of the API.
             project_id (str): The project ID.
             token (str): The authentication token.
+            session (requests.Session, optional): An existing requests.Session to reuse.
+                If not provided, a new session will be created.
         """
         super().__init__()
         self.base_url = base_url.rstrip("/")
         self.project_id = str(project_id)
-        self.session = requests.Session()
+
+        # Reuse existing session if provided, otherwise create a new one
+        if session is not None:
+            self.session = session
+            self._owns_session = False
+        else:
+            self.session = requests.Session()
+            self._owns_session = True
+
         self.session.headers.update({
             "Authorization": f"Bearer {token}",
             'Referer': 'https://nanohub.org/api'
@@ -716,9 +728,14 @@ class ProjectFilesFS(FS):
     def close(self):
         """
         Close the filesystem and the underlying session.
+
+        Only closes the session if this instance owns it (i.e., it wasn't
+        passed in from an external source).
         """
         try:
-            self.session.close()
+            # Only close the session if we created it
+            if self._owns_session:
+                self.session.close()
         except Exception:
             pass
         super().close()

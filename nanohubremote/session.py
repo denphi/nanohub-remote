@@ -25,6 +25,8 @@
 
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -42,6 +44,7 @@ class Session():
         credentials (dict): Dictionary containing authentication credentials.
         headers (dict): Dictionary of HTTP headers to be sent with requests.
         authenticated (bool): Flag indicating if the session is authenticated.
+        session (requests.Session): Persistent HTTP session object.
     """
     credentials = {}
     headers = {}
@@ -56,10 +59,36 @@ class Session():
             **kwargs: Additional arguments.
                 url (str): Base URL for the API. Defaults to "https://nanohub.org/api".
                 timeout (int): Request timeout in seconds. Defaults to 5.
+                max_retries (int): Maximum number of retries for failed requests. Defaults to 3.
+                pool_connections (int): Number of connection pool. Defaults to 10.
+                pool_maxsize (int): Maximum size of the pool. Defaults to 10.
         """
         self.credentials = credentials
         self.url = kwargs.get("url", "https://nanohub.org/api")
         self.timeout = kwargs.get("timeout", 5)
+
+        # Create a requests.Session with retry logic and connection pooling
+        self._session = requests.Session()
+
+        # Configure retry strategy
+        max_retries = kwargs.get("max_retries", 3)
+        retry_strategy = Retry(
+            total=max_retries,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST"]
+        )
+
+        # Configure connection pooling
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=kwargs.get("pool_connections", 10),
+            pool_maxsize=kwargs.get("pool_maxsize", 10)
+        )
+
+        self._session.mount("http://", adapter)
+        self._session.mount("https://", adapter)
+
         self.clearSession()
         self.validateSession()
 
@@ -74,11 +103,15 @@ class Session():
                 'Authorization': 'Bearer '+ self.access_token,
                 'Referer': self.url
             }
+            # Update session headers
+            self._session.headers.update(self.headers)
             self.refresh_token = self.credentials["token"]
             self.expires_in = 14400
         else:
             self.authenticated = False
             self.headers = {}
+            # Clear session headers
+            self._session.headers.clear()
             self.access_token = ""
             self.refresh_token = ""
             self.expires_in = 0
@@ -101,15 +134,21 @@ class Session():
 
         Args:
             url (str): The API endpoint.
-            **kwargs: Additional arguments for the request (data, headers, timeout).
+            **kwargs: Additional arguments for the request (data, json, headers, timeout).
 
         Returns:
             requests.Response: The response object.
         """
         data = kwargs.get("data", {})
-        headers = kwargs.get("headers", self.headers)
+        json_data = kwargs.get("json", None)
+        headers = kwargs.get("headers", None)
         timeout = kwargs.get("timeout", self.timeout)
-        return requests.post(self.getUrl(url), data=data, headers=headers, timeout=timeout)
+
+        # Use session's headers if not explicitly provided
+        if headers is not None:
+            return self._session.post(self.getUrl(url), data=data, json=json_data, headers=headers, timeout=timeout)
+        else:
+            return self._session.post(self.getUrl(url), data=data, json=json_data, timeout=timeout)
 
     def requestGet(self, url, **kwargs):
         """
@@ -123,9 +162,79 @@ class Session():
             requests.Response: The response object.
         """
         data = kwargs.get("data", {})
-        headers = kwargs.get("headers", self.headers)
+        headers = kwargs.get("headers", None)
         timeout = kwargs.get("timeout", self.timeout)
-        return requests.get(self.getUrl(url), data=data, headers=headers, timeout=timeout)
+
+        # Use session's headers if not explicitly provided
+        if headers is not None:
+            return self._session.get(self.getUrl(url), data=data, headers=headers, timeout=timeout)
+        else:
+            return self._session.get(self.getUrl(url), data=data, timeout=timeout)
+
+    def requestPut(self, url, **kwargs):
+        """
+        Perform a PUT request to the API.
+
+        Args:
+            url (str): The API endpoint.
+            **kwargs: Additional arguments for the request (data, json, headers, timeout).
+
+        Returns:
+            requests.Response: The response object.
+        """
+        data = kwargs.get("data", None)
+        json_data = kwargs.get("json", None)
+        headers = kwargs.get("headers", None)
+        timeout = kwargs.get("timeout", self.timeout)
+
+        # Use session's headers if not explicitly provided
+        if headers is not None:
+            return self._session.put(self.getUrl(url), data=data, json=json_data, headers=headers, timeout=timeout)
+        else:
+            return self._session.put(self.getUrl(url), data=data, json=json_data, timeout=timeout)
+
+    def requestDelete(self, url, **kwargs):
+        """
+        Perform a DELETE request to the API.
+
+        Args:
+            url (str): The API endpoint.
+            **kwargs: Additional arguments for the request (data, headers, timeout).
+
+        Returns:
+            requests.Response: The response object.
+        """
+        data = kwargs.get("data", {})
+        headers = kwargs.get("headers", None)
+        timeout = kwargs.get("timeout", self.timeout)
+
+        # Use session's headers if not explicitly provided
+        if headers is not None:
+            return self._session.delete(self.getUrl(url), data=data, headers=headers, timeout=timeout)
+        else:
+            return self._session.delete(self.getUrl(url), data=data, timeout=timeout)
+
+    def requestPatch(self, url, **kwargs):
+        """
+        Perform a PATCH request to the API.
+
+        Args:
+            url (str): The API endpoint.
+            **kwargs: Additional arguments for the request (data, json, headers, timeout).
+
+        Returns:
+            requests.Response: The response object.
+        """
+        data = kwargs.get("data", None)
+        json_data = kwargs.get("json", None)
+        headers = kwargs.get("headers", None)
+        timeout = kwargs.get("timeout", self.timeout)
+
+        # Use session's headers if not explicitly provided
+        if headers is not None:
+            return self._session.patch(self.getUrl(url), data=data, json=json_data, headers=headers, timeout=timeout)
+        else:
+            return self._session.patch(self.getUrl(url), data=data, json=json_data, timeout=timeout)
 
     def validateTokenRequest(self, request, timestamp):
         """
@@ -153,6 +262,8 @@ class Session():
         if 'refresh_token' in auth_json:
             self.refresh_token = auth_json['refresh_token']
         self.headers = {'Authorization': 'Bearer '+self.access_token}
+        # Update session headers with new token
+        self._session.headers.update(self.headers)
         self.authenticated = True
 
     def validateSession(self):
@@ -173,7 +284,7 @@ class Session():
                         refresh_token = {
                             'client_id': self.credentials['client_id'],
                             'client_secret': self.credentials['client_secret'],
-                            'grant_type': self.credentials['refresh_token'],
+                            'grant_type': 'refresh_token',  # Fixed: should be 'refresh_token', not self.credentials['refresh_token']
                             'refresh_token': self.refresh_token,
                         }
                         request = self.requestPost(
@@ -183,7 +294,8 @@ class Session():
                             timeout=self.timeout
                         )
                         self.validateTokenRequest(request, timestamp)
-                    except:
+                    except (requests.RequestException, ValueError, KeyError, AttributeError) as e:
+                        # Clear session on any request, JSON parsing, or token validation error
                         self.clearSession()
                 else:
                     self.clearSession()
@@ -196,15 +308,55 @@ class Session():
                     timeout=self.timeout
                 )
                 self.validateTokenRequest(request, timestamp)
-            except AttributeError:
+            except AttributeError as e:
                 self.clearSession()
-                raise ConnectionError("Authentication Token not found")
+                raise ConnectionError(f"Authentication Token not found: {str(e)}")
             except ConnectionError as ce:
                 self.clearSession()
                 raise ce
-            except:
+            except (requests.RequestException, ValueError, KeyError) as e:
                 self.clearSession()
-                raise ConnectionError("invalid Authentication")
+                raise ConnectionError(f"Invalid Authentication: {str(e)}")
+
+    def close(self):
+        """
+        Close the underlying requests.Session and release resources.
+
+        This should be called when the Session is no longer needed, or use
+        the Session as a context manager.
+        """
+        if hasattr(self, '_session'):
+            self._session.close()
+
+    def __enter__(self):
+        """
+        Enter context manager.
+
+        Returns:
+            Session: The session instance.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Exit context manager and close session.
+
+        Args:
+            exc_type: Exception type if an error occurred.
+            exc_val: Exception value if an error occurred.
+            exc_tb: Exception traceback if an error occurred.
+        """
+        self.close()
+        return False
+
+    def __del__(self):
+        """
+        Destructor to ensure session is closed when object is garbage collected.
+        """
+        try:
+            self.close()
+        except Exception:
+            pass
 
 
 class Tools(Session):
@@ -339,7 +491,7 @@ class Tools(Session):
         Returns:
             list: List of tool dictionaries.
         """
-        request = requests.get(self.getUrl('tools/list'), data={})
+        request = self.requestGet('tools/list', data={})
         tools_request = request.json()
         tools = []
         if 'tools' in tools_request:

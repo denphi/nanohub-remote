@@ -1,0 +1,37 @@
+# Include documentation
+include README.md
+include LICENSE
+include CHANGELOG.md
+include IMPROVEMENTS.md
+include TESTING.md
+recursive-include docs *.rst *.md Makefile
+exclude docs/build
+
+# Include configuration files
+include pyproject.toml
+include setup.py
+include pytest.ini
+
+# Include requirements
+include requirements-dev.txt
+
+# Include tests
+recursive-include tests *.py
+include tests/README.md
+
+# Include examples
+recursive-include examples *.ipynb *.py
+
+# Exclude build artifacts
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *~
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude .git*
+prune .git
+prune .ipynb_checkpoints
+prune build
+prune dist
+prune *.egg-info
+prune htmlcov

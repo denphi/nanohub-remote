@@ -35,24 +35,107 @@ pip install nanohub-remote
 
 ## Usage
 
+### Basic Authentication
 
 ```python
-
 import nanohubremote as nr
+
+# Option 1: OAuth Password Grant (requires web application)
 auth_data = {
-  'client_id': XXXXXXXX,
-  'client_secret': XXXXXXXX,
+  'client_id': 'XXXXXXXX',
+  'client_secret': 'XXXXXXXX',
   'grant_type': 'password',
-  'username': XXXXXXXX,
-  'password': XXXXXXXX
+  'username': 'your_username',
+  'password': 'your_password'
+}
+
+# Option 2: Personal Access Token (recommended)
+auth_data = {
+  'grant_type': 'personal_token',
+  'token': 'your_personal_token'
 }
 
 # to get username and password, register on nanohub.org (https://nanohub.org/register/)
 # to get client id and secret, create a web application (https://nanohub.org/developer/api/applications/new), use "https://127.0.0.1" as Redirect URL
+# to get a personal token, go to https://nanohub.org/developer/api/tokens
 
+# Create a session
 session = nr.Session(auth_data)
 
+# Or use as a context manager (recommended - automatically cleans up resources)
+with nr.Session(auth_data) as session:
+    # Your code here
+    pass
 ```
+
+### Session Configuration
+
+The Session class supports advanced configuration options:
+
+```python
+session = nr.Session(
+    auth_data,
+    url="https://nanohub.org/api",  # Custom API URL
+    timeout=10,                       # Request timeout in seconds (default: 5)
+    max_retries=5,                    # Maximum retries for failed requests (default: 3)
+    pool_connections=20,              # Connection pool size (default: 10)
+    pool_maxsize=20                   # Max pool size (default: 10)
+)
+```
+
+### HTTP Methods
+
+The Session class provides methods for all standard HTTP verbs:
+
+```python
+with nr.Session(auth_data) as session:
+    # GET request
+    response = session.requestGet('tools/list')
+    tools = response.json()
+
+    # POST request with form data
+    response = session.requestPost('endpoint', data={'key': 'value'})
+
+    # POST request with JSON
+    response = session.requestPost('endpoint', json={'key': 'value'})
+
+    # PUT request
+    response = session.requestPut('resource/123', json={'status': 'updated'})
+
+    # DELETE request
+    response = session.requestDelete('resource/123')
+
+    # PATCH request
+    response = session.requestPatch('resource/123', json={'field': 'new_value'})
+```
+
+### Features
+
+- **Connection Pooling**: Reuses HTTP connections for better performance
+- **Automatic Retries**: Automatically retries failed requests (configurable)
+- **Token Management**: Handles OAuth token refresh automatically
+- **Context Manager**: Use `with` statement for automatic resource cleanup
+- **Persistent Headers**: Headers are maintained across all requests
+
+## Development
+
+### Running Tests
+
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=nanohubremote --cov-report=html
+
+# Run specific test file
+pytest tests/test_session.py
+```
+
+See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 ## Available Nanohub Points
 

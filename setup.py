@@ -52,14 +52,30 @@ setup_args = {
     ],
     'include_package_data' : True,
     'install_requires' : [
+        'requests>=2.25.0',
+        'urllib3>=1.26.0',
+        'fs>=2.4.0',
     ],
     'extras_require' : {
         'test': [
+            'pytest>=7.0.0',
+            'pytest-cov>=4.0.0',
+            'pytest-mock>=3.10.0',
+        ],
+        'dev': [
+            'pytest>=7.0.0',
+            'pytest-cov>=4.0.0',
+            'pytest-mock>=3.10.0',
+            'black>=23.0.0',
+            'flake8>=6.0.0',
+            'mypy>=1.0.0',
         ],
         'examples': [
             # Any requirements for the examples to run
         ],
         'docs': [
+            'sphinx>=5.0.0',
+            'sphinx-rtd-theme>=1.0.0',
         ],
     },
     'entry_points' : {
