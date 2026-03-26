@@ -54,6 +54,7 @@ setup_args = {
     'install_requires' : [
         'requests>=2.25.0',
         'urllib3>=1.26.0',
+        'setuptools',
         'fs>=2.4.0',
         'numpy>=1.20.0',
         'pint>=0.18',
