@@ -2,6 +2,15 @@
 
 import os
 import sys
+from unittest.mock import MagicMock
+
+# Mock packages that require C extensions or are unavailable on RTD
+for mod in [
+    'fs', 'fs.base', 'fs.info', 'fs.mode', 'fs.path',
+    'fs.subfs', 'fs.errors', 'fs.enums',
+]:
+    sys.modules[mod] = MagicMock()
+
 sys.path.insert(0, os.path.abspath('../..'))
 
 # Import version
