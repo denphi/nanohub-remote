@@ -20,7 +20,15 @@ Personal Access Token (Recommended)
 
    session = nr.Session(auth_data)
 
-To get a personal token, visit: https://nanohub.org/developer/api/tokens
+To get a personal token, visit https://nanohub.org/developer/api/docs and
+open the **Active Session Tokens** panel. Click the eye icon to reveal a
+token or the copy icon to copy it, and use that value as ``token`` above.
+Note the expiration date shown beneath each token.
+
+.. image:: images/tokens.png
+   :alt: Active Session Tokens panel on nanoHUB showing tokens and expiration dates
+   :align: center
+   :width: 600px
 
 OAuth Password Grant
 ~~~~~~~~~~~~~~~~~~~~

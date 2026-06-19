@@ -23,6 +23,16 @@ Personal Token Authentication
    with nr.Session(auth_data) as session:
        print(f"Session authenticated: {session.authenticated}")
 
+To find your personal token, visit
+https://nanohub.org/developer/api/docs and open the **Active Session
+Tokens** panel. Use the eye icon to reveal a token and the copy icon to copy
+it; each token's expiration date is shown below it.
+
+.. image:: ../images/tokens.png
+   :alt: Active Session Tokens panel on nanoHUB showing tokens and expiration dates
+   :align: center
+   :width: 600px
+
 OAuth Authentication
 ~~~~~~~~~~~~~~~~~~~~
 
