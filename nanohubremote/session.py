@@ -166,10 +166,11 @@ class Session():
         timeout = kwargs.get("timeout", self.timeout)
 
         # Use session's headers if not explicitly provided
+        # GET requests send parameters as query params; bodies are ignored by servers.
         if headers is not None:
-            return self._session.get(self.getUrl(url), data=data, headers=headers, timeout=timeout)
+            return self._session.get(self.getUrl(url), params=data, headers=headers, timeout=timeout)
         else:
-            return self._session.get(self.getUrl(url), data=data, timeout=timeout)
+            return self._session.get(self.getUrl(url), params=data, timeout=timeout)
 
     def requestPut(self, url, **kwargs):
         """
