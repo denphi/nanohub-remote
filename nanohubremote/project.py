@@ -34,7 +34,8 @@ from fs.errors import (
     PermissionDenied,
     Unsupported,
     FSError,
-    CreateFailed
+    CreateFailed,
+    RemoteConnectionError
 )
 
 import requests
@@ -479,7 +480,8 @@ class ProjectFilesFS(FS):
         resp = self._request(
             "GET", f"/projects/{self.project_id}/filefs/move", params=params)
         if isinstance(resp, requests.Response) and not resp.ok:
-            raise MoveFailed(f"Move failed: {resp.status_code} {resp.text}")
+            raise RemoteConnectionError(
+                f"Move failed: {resp.status_code} {resp.text}")
         return None
 
     def rename(self, src_path: str, new_name: str):
